@@ -1,17 +1,16 @@
 import vtk
-from vtkmodules.util.numpy_support import vtk_to_numpy
-import collections
 from typing import Tuple, List
+from pubsub import pub as Publisher
 
 from slice_data import SliceData
 import constants as const
 from slice_ import Slice
-from styles import DefaultInteractorStyle, CrossInteractorStyle, DefaultInteractorStyle_2, CrossInteractorStyle_2
+from styles import CrossInteractorStyle, CrossInteractorStyle_2
 from vtk_utils import TextZero
 from project import Project
 
 # Single view
-class Viewer:
+class ViewerDemo:
     def __init__(self, orientation="AXIAL") -> None:
         self.number_slices = 1
         self.orientation = orientation
@@ -267,17 +266,19 @@ class Viewer:
             self.UpdateRender()
 
 # Multi view
-class Viewer2:
+class SliceViewer:
     def __init__(self) -> None:
         self.number_slices = 1
-
         self.scroll_position_axial = 0
         self.scroll_position_coronal = 0
         self.scroll_position_sagital = 0
         
+        # Axial view
         renderWindow_axial = vtk.vtkRenderWindow()
-        renderWindow_axial.SetSize(500, 500)
+        renderWindow_axial.SetWindowName("AXIAL")
+        renderWindow_axial.SetSize(350, 350)
         renderWindow_axial.SetPosition(0, 0)
+
         self.renderer_axial = vtk.vtkRenderer()
         renderWindow_axial.AddRenderer(self.renderer_axial)
 
@@ -286,9 +287,12 @@ class Viewer2:
         self.pick_axial = vtk.vtkWorldPointPicker()
         self.interactor_axial.SetPicker(self.pick_axial)
 
+        # Coronal view
         renderWindow_coronal = vtk.vtkRenderWindow()
-        renderWindow_coronal.SetSize(500, 500)
-        renderWindow_coronal.SetPosition(500, 0)
+        renderWindow_coronal.SetWindowName("CORONAL")
+        renderWindow_coronal.SetSize(350, 350)
+        renderWindow_coronal.SetPosition(350, 0)
+
         self.renderer_coronal = vtk.vtkRenderer()
         renderWindow_coronal.AddRenderer(self.renderer_coronal)
 
@@ -297,9 +301,12 @@ class Viewer2:
         self.pick_coronal = vtk.vtkWorldPointPicker()
         self.interactor_coronal.SetPicker(self.pick_coronal)
 
+        # Sagital view
         renderWindow_sagital = vtk.vtkRenderWindow()
-        renderWindow_sagital.SetSize(500, 500)
-        renderWindow_sagital.SetPosition(1000, 0)
+        renderWindow_sagital.SetWindowName("SAGITAL")
+        renderWindow_sagital.SetSize(350, 350)
+        renderWindow_sagital.SetPosition(700, 0)
+
         self.renderer_sagital = vtk.vtkRenderer()
         renderWindow_sagital.AddRenderer(self.renderer_sagital)
 
@@ -307,6 +314,14 @@ class Viewer2:
         self.interactor_sagital.SetRenderWindow(renderWindow_sagital)
         self.pick_sagital = vtk.vtkWorldPointPicker()
         self.interactor_sagital.SetPicker(self.pick_sagital)
+
+        self.__bind_events()
+
+    def __bind_events(self) -> None:
+        Publisher.subscribe(self.SetInput, "Load mpr")
+        Publisher.subscribe(self.startApp, "Start app")
+        Publisher.subscribe(self.SetCrossFocalPoint, "Set cross focal point")
+        Publisher.subscribe(self.UpdateRender, "Update mpr")
         
     def create_slice_window(self, orientation: str) -> SliceData:
         actor = vtk.vtkImageActor()
@@ -318,14 +333,14 @@ class Viewer2:
         slice_data.actor = actor
 
         if orientation == "AXIAL":
-            self.renderer_axial.AddActor(actor)
-            self.renderer_axial.AddActor(slice_data.text.actor)
+            renderer = self.renderer_axial
         elif orientation == "CORONAL":
-            self.renderer_coronal.AddActor(actor)
-            self.renderer_coronal.AddActor(slice_data.text.actor)
-        elif orientation == "SAGITAL":
-            self.renderer_sagital.AddActor(actor)
-            self.renderer_sagital.AddActor(slice_data.text.actor)
+            renderer = self.renderer_coronal
+        else:
+            renderer = self.renderer_sagital
+        
+        renderer.AddActor(actor)
+        renderer.AddActor(slice_data.text.actor)
         return slice_data
     
     def __build_cross_lines(self) -> None:
@@ -337,7 +352,7 @@ class Viewer2:
         cross_axial.AxesOn()
         self.cross_axial = cross_axial
 
-        # Create a vtkUnsignedCharArray container and store the colors in it
+        # Create a vtkUnsignedCharArray container and store the colors in it.
         color_array_axial = vtk.vtkUnsignedCharArray()
         color_array_axial.SetNumberOfComponents(3)
         color_array_axial.SetNumberOfTuples(3)
@@ -351,8 +366,10 @@ class Viewer2:
         cross_actor_axial = vtk.vtkActor()
         cross_actor_axial.SetMapper(cross_mapper_axial)
         # cross_actor_axial.GetProperty().SetColor(1, 0, 0)
+        # cross_actor_axial.GetProperty().SetLineWidth(2)
         cross_actor_axial.VisibilityOn()
         cross_actor_axial.PickableOff()
+
         self.renderer_axial.AddActor(cross_actor_axial)
 
         # Generate a 3D cursor representation.
@@ -363,7 +380,7 @@ class Viewer2:
         cross_coronal.AxesOn()
         self.cross_coronal = cross_coronal
 
-        # Create a vtkUnsignedCharArray container and store the colors in it
+        # Create a vtkUnsignedCharArray container and store the colors in it.
         color_array_coronal = vtk.vtkUnsignedCharArray()
         color_array_coronal.SetNumberOfComponents(3)
         color_array_coronal.SetNumberOfTuples(3)
@@ -377,8 +394,10 @@ class Viewer2:
         cross_actor_coronal = vtk.vtkActor()
         cross_actor_coronal.SetMapper(cross_mapper_coronal)
         # cross_actor_coronal.GetProperty().SetColor(1, 0, 0)
+        # cross_actor_coronal.GetProperty().SetLineWidth(2)
         cross_actor_coronal.VisibilityOn()
         cross_actor_coronal.PickableOff()
+
         self.renderer_coronal.AddActor(cross_actor_coronal)
 
         # Generate a 3D cursor representation.
@@ -389,7 +408,7 @@ class Viewer2:
         cross_sagital.AxesOn()
         self.cross_sagital = cross_sagital
 
-        # Create a vtkUnsignedCharArray container and store the colors in it
+        # Create a vtkUnsignedCharArray container and store the colors in it.
         color_array_sagital = vtk.vtkUnsignedCharArray()
         color_array_sagital.SetNumberOfComponents(3)
         color_array_sagital.SetNumberOfTuples(3)
@@ -403,8 +422,10 @@ class Viewer2:
         cross_actor_sagital = vtk.vtkActor()
         cross_actor_sagital.SetMapper(cross_mapper_sagital)
         # cross_actor_sagital.GetProperty().SetColor(1, 0, 0)
+        # cross_actor_sagital.GetProperty().SetLineWidth(2)
         cross_actor_sagital.VisibilityOn()
         cross_actor_sagital.PickableOff()
+
         self.renderer_sagital.AddActor(cross_actor_sagital)
 
     def get_coordinate_cursor(self, mx: int, my: int, orientation: str, picker: vtk.vtkWorldPointPicker) -> Tuple:
@@ -414,7 +435,7 @@ class Viewer2:
         elif orientation == "CORONAL":
             slice_data = self.slice_data_coronal
             renderer = self.renderer_coronal
-        elif orientation == "SAGITAL":
+        else:
             slice_data = self.slice_data_sagital
             renderer = self.renderer_sagital
 
@@ -442,7 +463,7 @@ class Viewer2:
             camera_coronal.SetViewUp(0, 0, -1)
             camera_coronal.SetPosition(0, 1, 0)
             camera_coronal.ParallelProjectionOn()
-        elif orientation == "SAGITAL":
+        else:
             camera_sagital = self.renderer_sagital.GetActiveCamera()
             camera_sagital.SetFocalPoint(0, 0, 0)
             camera_sagital.SetViewUp(0, 0, -1)
@@ -456,7 +477,7 @@ class Viewer2:
         elif orientation == "CORONAL":
             self.slice_data_coronal.actor.SetDisplayExtent(image.GetExtent())
             self.renderer_coronal.ResetCameraClippingRange()
-        elif orientation == "SAGITAL":
+        else:
             self.slice_data_sagital.actor.SetDisplayExtent(image.GetExtent())
             self.renderer_sagital.ResetCameraClippingRange()
 
@@ -465,7 +486,7 @@ class Viewer2:
 
         # Window level text
         wl_text = TextZero()
-        wl_text.SetSize(const.TEXT_SIZE_LARGE)
+        wl_text.SetSize(const.TEXT_SIZE_SMALL)
         wl_text.SetPosition(const.TEXT_POS_LEFT_UP)
         wl_text.SetValue("WL: %d WW: %d" % (project.window_level, project.window_width))
 
@@ -483,22 +504,22 @@ class Viewer2:
         renderer.AddActor(wl_text.actor)
 
         left_text = TextZero()
-        left_text.SetSize(const.TEXT_SIZE_LARGE)
+        left_text.SetSize(const.TEXT_SIZE_SMALL)
         left_text.SetPosition(const.TEXT_POS_VCENTRE_LEFT)
         left_text.SetValue(values[0])
 
         right_text = TextZero()
-        right_text.SetSize(const.TEXT_SIZE_LARGE)
+        right_text.SetSize(const.TEXT_SIZE_SMALL)
         right_text.SetPosition(const.TEXT_POS_VCENTRE_RIGHT_ZERO)
         right_text.SetValue(values[1])
 
         up_text = TextZero()
-        up_text.SetSize(const.TEXT_SIZE_LARGE)
+        up_text.SetSize(const.TEXT_SIZE_SMALL)
         up_text.SetPosition(const.TEXT_POS_HCENTRE_UP)
         up_text.SetValue(values[2])
 
         down_text = TextZero()
-        down_text.SetSize(const.TEXT_SIZE_LARGE)
+        down_text.SetSize(const.TEXT_SIZE_SMALL)
         down_text.SetPosition(const.TEXT_POS_HCENTRE_DOWN_ZERO)
         down_text.SetValue(values[3])
 
@@ -516,7 +537,7 @@ class Viewer2:
             xi, xf, yi, yf, zi, zf = self.slice_data_coronal.actor.GetBounds()
             mx = round((x - xi) / self.slice.spacing[0], 0)
             my = round((z - zi) / self.slice.spacing[2], 0)
-        elif orientation == "SAGITAL":
+        else:
             xi, xf, yi, yf, zi, zf = self.slice_data_sagital.actor.GetBounds()
             mx = round((y - yi) / self.slice.spacing[1], 0)
             my = round((z - zi) / self.slice.spacing[2], 0)
@@ -538,7 +559,7 @@ class Viewer2:
             axial = y
             coronal = self.slice_data_coronal.number
             sagital = x
-        elif orientation == "SAGITAL":
+        else:
             axial = y
             coronal = x
             sagital = self.slice_data_sagital.number
@@ -547,17 +568,32 @@ class Viewer2:
     def UpdateSlicesPosition(self, orientation: str, position: List) -> None:
         px, py = self.get_slice_pixel_coord_by_world_pos(orientation, *position)
         sagital, coronal, axial = self.calcultate_scroll_position(orientation, px, py)
+        if orientation == "AXIAL":
+            self.set_slice_number(coronal, "CORONAL")
+            self.scroll_position_coronal = coronal
+            self.set_slice_number(sagital, "SAGITAL")
+            self.scroll_position_sagital = sagital
+            orientations = ["CORONAL", "SAGITAL"]
+        elif orientation == "CORONAL":
+            self.set_slice_number(axial, "AXIAL")
+            self.scroll_position_axial = axial
+            self.set_slice_number(sagital, "SAGITAL")
+            self.scroll_position_sagital = sagital
+            orientations = ["AXIAL", "SAGITAL"]
+        else:
+            self.set_slice_number(axial, "AXIAL")
+            self.scroll_position_axial = axial
+            self.set_slice_number(coronal, "CORONAL")
+            self.scroll_position_coronal = coronal
+            orientations = ["AXIAL", "CORONAL"]
 
-        self.set_slice_number(axial, "AXIAL")
-        self.scroll_position_axial = axial
-
-        self.set_slice_number(coronal, "CORONAL")
-        self.scroll_position_coronal = coronal
-
-        self.set_slice_number(sagital, "SAGITAL")
-        self.scroll_position_sagital = sagital
-
-        # self.UpdateRender()
+        self.UpdateRender()
+        # 3D
+        Publisher.sendMessage("Update slice 3d", orientations=orientations)
+        Publisher.sendMessage("Update volume")
+        # Endoscopy
+        # Publisher.sendMessage("Update camera position", position=position)
+        # Publisher.sendMessage("Update volume")
 
     def SetCrossFocalPoint(self, position: List) -> None:
         self.cross_axial.SetFocalPoint(position)
@@ -613,7 +649,7 @@ class Viewer2:
             self.cross_coronal.SetModelBounds(self.slice_data_coronal.actor.GetBounds())
             self.cross_coronal.Update()
             self.cross_coronal.GetOutput().GetCellData().SetScalars(self.color_array_coronal)
-        elif orientation == "SAGITAL":
+        else:
             self.slice_data_sagital.actor.SetInputData(image)
             self.slice_data_sagital.SetNumber(index)
 
@@ -662,148 +698,66 @@ class Viewer2:
         self.interactor_sagital.GetRenderWindow().Render()
 
         self.SetInteractorStyle()
-        self.interactor_axial.Start()
 
     def OnScrollForward(self, orientation: str) -> None:
         min = 0
-
         if orientation == "AXIAL":
             position = self.scroll_position_axial
         elif orientation == "CORONAL":
             position = self.scroll_position_coronal
-        elif orientation == "SAGITAL":
+        else:
             position = self.scroll_position_sagital
 
         if position >= min:
             position = position - 1
             self.set_slice_number(position, orientation)
-
             if orientation == "AXIAL":
                 self.scroll_position_axial = position
                 x, y, z = self.cross_axial.GetFocalPoint()
                 self.SetCrossFocalPoint([x, y, z])
             elif orientation == "CORONAL":
                 self.scroll_position_coronal = position
-                x, y, z = self.viewer.cross_coronal.GetFocalPoint()
+                x, y, z = self.cross_coronal.GetFocalPoint()
                 self.SetCrossFocalPoint([x, y, z])
-            elif orientation == "SAGITAL":
+            else:
                 self.scroll_position_sagital = position
-                x, y, z = self.viewer.cross_sagital.GetFocalPoint()
+                x, y, z = self.cross_sagital.GetFocalPoint()
                 self.SetCrossFocalPoint([x, y, z])
 
             self.UpdateRender()
+            # 3D
+            Publisher.sendMessage("Update slice 3d", orientations=[orientation])
+            Publisher.sendMessage("Update volume")
 
     def OnScrollBackward(self, orientation: str) -> None:
         max = self.slice.GetMaxSliceNumber(orientation)
-
         if orientation == "AXIAL":
             position = self.scroll_position_axial
         elif orientation == "CORONAL":
             position = self.scroll_position_coronal
-        elif orientation == "SAGITAL":
+        else:
             position = self.scroll_position_sagital
 
         if position <= max:
             position = position + 1
             self.set_slice_number(position, orientation)
-
             if orientation == "AXIAL":
                 self.scroll_position_axial = position
                 x, y, z = self.cross_axial.GetFocalPoint()
                 self.SetCrossFocalPoint([x, y, z])
             elif orientation == "CORONAL":
                 self.scroll_position_coronal = position
-                x, y, z = self.viewer.cross_coronal.GetFocalPoint()
+                x, y, z = self.cross_coronal.GetFocalPoint()
                 self.SetCrossFocalPoint([x, y, z])
-            elif orientation == "SAGITAL":
+            else:
                 self.scroll_position_sagital = position
-                x, y, z = self.viewer.cross_sagital.GetFocalPoint()
+                x, y, z = self.cross_sagital.GetFocalPoint()
                 self.SetCrossFocalPoint([x, y, z])
 
             self.UpdateRender()
+            # 3D
+            Publisher.sendMessage("Update slice 3d", orientations=[orientation])
+            Publisher.sendMessage("Update volume")
 
-def test() -> None:
-    renderWindow = vtk.vtkRenderWindow()
-    renderWindow.SetSize(1000, 500)
-
-    renderer = vtk.vtkRenderer()
-    # renderer.SetLayer(0)
-    # camera = renderer.GetActiveCamera()
-    # renderer.SetBackground(1, 1, 1)
-
-    # canvasRenderer = vtk.vtkRenderer()
-    # canvasRenderer.SetLayer(1)
-    # canvasRenderer.SetActiveCamera(camera)
-    # canvasRenderer.SetInteractive(0)
-    # canvasRenderer.PreserveDepthBufferOn()
-
-    # overlayRenderer = vtk.vtkRenderer()
-    # overlayRenderer.SetLayer(2)
-    # overlayRenderer.SetActiveCamera(camera)
-    # overlayRenderer.SetInteractive(0)
-
-    # renderWindow.SetNumberOfLayers(3)
-    renderWindow.AddRenderer(renderer)
-    # renderWindow.AddRenderer(canvasRenderer)
-    # renderWindow.AddRenderer(overlayRenderer)
-
-    renderWindowInteractor = vtk.vtkRenderWindowInteractor()
-    style = vtk.vtkInteractorStyleImage()
-    # style = vtk.vtkInteractorStyleTrackballCamera()
-    renderWindowInteractor.SetInteractorStyle(style)
-    renderWindowInteractor.SetRenderWindow(renderWindow)
-
-    orientation = "AXIAL"
-    # orientation = "CORONAL"
-    # orientation = "SAGITAL"
-    slice = Slice()
-    image = slice.GetSlices(orientation, 100, 1)
-    # print(image)
-
-    # mapper = vtk.vtkImageSliceMapper()
-    # mapper.SetInputData(image)
-    # imageProperty = vtk.vtkImageProperty()
-    # imageProperty.SetInterpolationTypeToNearest()
-    # actor = vtk.vtkImageSlice()
-    # actor.SetMapper(mapper)
-    # actor.SetProperty(imageProperty)
-
-    actor = vtk.vtkImageActor()
-    actor.InterpolateOn()
-    actor.SetInputData(image)
-
-    renderer.AddActor(actor)
-
-    camera = renderer.GetActiveCamera()
-    camera.SetFocalPoint(0, 0, 0)
-    # AXIAL
-    camera.SetViewUp(0, 1, 0)
-    camera.SetPosition(0, 0, 1)
-    # CORONAL
-    # camera.SetViewUp(0, -1, 0)
-    # camera.SetPosition(0, 0, 1)
-    # SAGITAL
-    # camera.SetViewUp(0, -1, 0)
-    # camera.SetPosition(0, 0, 1)
-    camera.ParallelProjectionOn()
-
-    renderer.ResetCamera()
-    renderWindowInteractor.Start()
-
-if __name__ == "__main__":
-    path = "D:/workingspace/dicom/220277460 Nguyen Thanh Dat"
-    dicomReader = vtk.vtkDICOMImageReader()
-    dicomReader.SetDirectoryName(path)
-    dicomReader.Update()
-    imageData = dicomReader.GetOutput()
-    dimensions = imageData.GetDimensions()
-    shape = dimensions[::-1]
-    matrix = vtk_to_numpy(imageData.GetPointData().GetScalars()).reshape(shape)
-    slice = Slice()
-    slice.matrix = matrix
-    slice.spacing = imageData.GetSpacing()
-    slice.center = imageData.GetCenter()
-
-    viewer2 = Viewer2()
-    viewer2.SetInput()
-    
+    def startApp(self):
+        self.interactor_axial.Start()

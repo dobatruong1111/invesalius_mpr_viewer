@@ -1,5 +1,6 @@
 import vtk
 from typing import Tuple
+from pubsub import pub as Publisher
 
 import constants as const
 
@@ -78,49 +79,6 @@ class DefaultInteractorStyle(BaseImageInteractorStyle):
         obj.OnRightButtonUp()
         self.right_pressed = False
 
-# Test
-class DefaultInteractorStyle_2(BaseImageInteractorStyle):
-    """
-    Interactor style responsible for Default functionalities:
-        - Zoom moving mouse with right button pressed.
-        - Change the slices with the scroll.
-    """
-    def __init__(self, viewer, orientation) -> None:
-        BaseImageInteractorStyle.__init__(self, viewer)
-
-        self.viewer = viewer
-        self.orientation = orientation
-
-        self.AddObserver("MouseMoveEvent", self.OnZoomRightMove)
-        self.AddObserver("MouseWheelForwardEvent", self.OnScrollForward)
-        self.AddObserver("MouseWheelBackwardEvent", self.OnScrollBackward)
-
-        # Zoom using right button
-        self.AddObserver("RightButtonPressEvent", self.OnZoomRightClick)
-        self.AddObserver("RightButtonReleaseEvent", self.OnZoomRightRelease)
-
-    def OnZoomRightMove(self, obj, event) -> None:
-        if self.right_pressed:
-            obj.Dolly()
-            obj.OnRightButtonDown()
-        elif self.middle_pressed:
-            obj.Pan()
-            obj.OnMiddleButtonDown()
-
-    def OnScrollForward(self, obj, event) -> None:
-        self.viewer.OnScrollForward(self.orientation)
-
-    def OnScrollBackward(self, obj, event) -> None:
-        self.viewer.OnScrollBackward(self.orientation)
-
-    def OnZoomRightClick(self, obj, event) -> None:
-        obj.StartDolly()
-
-    def OnZoomRightRelease(self, obj, event) -> None:
-        obj.OnRightButtonUp()
-        self.right_pressed = False
-# Test
-
 class CrossInteractorStyle(DefaultInteractorStyle):
     """
     The style displays the cross in each slice and allows the user to move the cross in the slices by clicking 
@@ -161,18 +119,57 @@ class CrossInteractorStyle(DefaultInteractorStyle):
         self.viewer.SetCrossFocalPoint([x, y, z])
         self.viewer.UpdateRender()
 
-# Test
+class DefaultInteractorStyle_2(BaseImageInteractorStyle):
+    """
+    Interactor style responsible for Default functionalities:
+        - Zoom moving mouse with right button pressed.
+        - Change the slices with the scroll.
+    """
+    def __init__(self, viewer, orientation) -> None:
+        BaseImageInteractorStyle.__init__(self, viewer)
+
+        self.viewer = viewer
+        self.orientation = orientation
+
+        self.AddObserver("MouseMoveEvent", self.OnZoomRightMove)
+        self.AddObserver("MouseWheelForwardEvent", self.OnScrollForward)
+        self.AddObserver("MouseWheelBackwardEvent", self.OnScrollBackward)
+
+        # Zoom using right button
+        self.AddObserver("RightButtonPressEvent", self.OnZoomRightClick)
+        self.AddObserver("RightButtonReleaseEvent", self.OnZoomRightRelease)
+
+    def OnZoomRightMove(self, obj, event) -> None:
+        if self.right_pressed:
+            obj.Dolly()
+            obj.OnRightButtonDown()
+        elif self.middle_pressed:
+            obj.Pan()
+            obj.OnMiddleButtonDown()
+
+    def OnScrollForward(self, obj, event) -> None:
+        self.viewer.OnScrollForward(self.orientation)
+
+    def OnScrollBackward(self, obj, event) -> None:
+        self.viewer.OnScrollBackward(self.orientation)
+
+    def OnZoomRightClick(self, obj, event) -> None:
+        obj.StartDolly()
+
+    def OnZoomRightRelease(self, obj, event) -> None:
+        obj.OnRightButtonUp()
+        self.right_pressed = False
+
 class CrossInteractorStyle_2(DefaultInteractorStyle_2):
     """
-    The style displays the cross in each slice and allows the user to move the cross in the slices by clicking 
-    and dragging the mouse.
+    The style displays the cross in each slice and allows the user to move the cross 
+    in the slices by clicking and dragging the mouse.
     """
     def __init__(self, viewer, orientation) -> None:
         DefaultInteractorStyle_2.__init__(self, viewer, orientation)
 
         self.viewer = viewer
         self.orientation = orientation
-
         self.picker = vtk.vtkWorldPointPicker()
 
         self.AddObserver("LeftButtonPressEvent", self.OnCrossMouseClick)
@@ -195,11 +192,11 @@ class CrossInteractorStyle_2(DefaultInteractorStyle_2):
         x, y, z = self.viewer.get_coordinate_cursor(mouse_x, mouse_y, self.orientation, self.picker)
         
         self.viewer.UpdateSlicesPosition(self.orientation, [x, y, z])
+        
+        Publisher.sendMessage("Set cross focal point", position=[x, y, z])
+        Publisher.sendMessage("Update mpr")
 
-        # Update the position of the cross in other slices.
-        self.viewer.SetCrossFocalPoint([x, y, z])
-        self.viewer.UpdateRender()
-
+    '''
     def OnScrollBar(self) -> None:
         if self.orientation == "AXIAL":
             x, y, z = self.viewer.cross_axial.GetFocalPoint()
@@ -208,9 +205,9 @@ class CrossInteractorStyle_2(DefaultInteractorStyle_2):
         elif self.orientation == "SAGITAL":
             x, y, z = self.viewer.cross_sagital.GetFocalPoint()
 
-        # self.viewer.UpdateSlicesPosition(self.orientation, [x, y, z])
+        self.viewer.UpdateSlicesPosition(self.orientation, [x, y, z])
 
         # Update the position of the cross in other slices.
         self.viewer.SetCrossFocalPoint([x, y, z])
-        # self.viewer.UpdateRender()
-# Test
+        self.viewer.UpdateRender()
+    '''

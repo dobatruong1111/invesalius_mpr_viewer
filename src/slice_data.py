@@ -12,7 +12,7 @@ class SliceData:
 
     def __create_text(self) -> None:
         text = TextZero()
-        text.SetSize(const.TEXT_SIZE_LARGE)
+        text.SetSize(const.TEXT_SIZE_SMALL)
         text.SetPosition(const.TEXT_POS_LEFT_DOWN_ZERO)
         text.SetValue(self.number)
         self.text = text

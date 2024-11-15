@@ -8,7 +8,7 @@ def to_vtk(
     orientation="AXIAL",
     origin=(0, 0, 0),
     padding=(0, 0, 0),
-):
+) -> vtk.vtkImageData:
     if orientation == "SAGITTAL":
         orientation = "SAGITAL"
 
@@ -57,9 +57,6 @@ def to_vtk(
     image.SetOrigin(origin)
     image.SetSpacing(spacing)
     image.SetDimensions(dx, dy, dz)
-    # SetNumberOfScalarComponents and SetScalrType were replaced by AllocateScalars
-    # image.SetNumberOfScalarComponents(1)
-    # image.SetScalarType(numpy_support.get_vtk_array_type(n_array.dtype))
     image.AllocateScalars(numpy_support.get_vtk_array_type(n_array.dtype), 1)
     image.SetExtent(extent)
     image.GetPointData().SetScalars(v_image)

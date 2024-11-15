@@ -9,8 +9,12 @@ pip install -r requirements.txt
 ```
 
 ## Start application
-### 1. Replace path to dicom in src/viewer_slice.py
-### 2. Run application
+### 1. Replace path to dicom in src/main.py
+### 2. Run application with render mode CPU
 ```
 python3 src/viewer_slice.py
+```
+### Run application with render mode GPU
+```
+python3 src/viewer_slice.py --mode GPU
 ```
